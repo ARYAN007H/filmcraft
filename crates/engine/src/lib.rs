@@ -1236,6 +1236,8 @@ mod gap_selection_tests;
 #[cfg(test)]
 mod image_sequence_tests;
 #[cfg(test)]
+mod individual_selection_tests;
+#[cfg(test)]
 mod interchange_auto_points_tests;
 #[cfg(test)]
 mod keyboard_tests;
