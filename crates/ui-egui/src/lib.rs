@@ -1893,6 +1893,10 @@ impl FilmcraftApp {
 
     /// A quiet, persistent restart affordance once a verified build is staged.
     fn update_badge(&mut self, ui: &mut egui::Ui, status_bar: egui::Rect, t: &Tokens) {
+        use std::sync::atomic::Ordering;
+        if self.session.jobs.iter().any(|j| !j.progress.finished.load(Ordering::Relaxed)) {
+            return;
+        }
         let Some(version) = self.updates.ready_version().map(str::to_string) else { return };
         let badge = egui::Rect::from_min_size(
             egui::pos2((status_bar.right() - 310.0).max(status_bar.left() + 120.0), status_bar.top() + 1.0),

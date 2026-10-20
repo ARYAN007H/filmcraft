@@ -82,8 +82,7 @@ fn apply_staged_update(args: UpdateApply) -> filmcraft_updater::Result<()> {
     if !filmcraft_updater::swap::wait_for_exit(args.pid, std::time::Duration::from_secs(10)) {
         log::warn!("FilmCraft process {} is still running after 10 s; applying anyway", args.pid);
     }
-    let applied = filmcraft_updater::Staged::load(&args.staged)
-        .and_then(|staged| filmcraft_updater::swap::apply(&staged, &args.target));
+    let applied = filmcraft_updater::Staged::load(&args.staged).and_then(|staged| filmcraft_updater::swap::apply(&staged, &args.target));
     // Whatever happened, the user asked for a restart: start the (new or restored) build.
     filmcraft_updater::swap::relaunch(&args.target, &[])?;
     applied

@@ -137,6 +137,7 @@ pub const UI_COMMANDS: &[UiCommand] = &[
     uic!("mode.import", "Import", [], None),
     uic!("mode.edit", "Edit", [], None),
     uic!("mode.export", "Export", ["File", "Export"], Some("Cmd+M")),
+    uic!("help.checkForUpdates", "Check for Updates…", ["Help"], None),
     uic!("help.discord", "Join the ArtCraft Discord…", ["Help"], None),
     uic!("help.website", "ArtCraft Website", ["Help"], None),
     uic!("help.appPage", "FilmCraft on getartcraft.com", ["Help"], None),
