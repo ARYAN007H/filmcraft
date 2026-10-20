@@ -243,7 +243,22 @@ pub fn apply(staged: &Staged, exe: &Path) -> Result<()> {
         files: staged.files.iter().map(|f| f.dst.clone()).collect(),
         confirmed_at: None,
     };
-    write_state(exe, &state)
+    if let Err(e) = write_state(exe, &state) {
+        for (d, had) in done.iter().rev() {
+            if *had {
+                let _ = std::fs::rename(sibling(d, ".prev"), d);
+            } else {
+                let _ = std::fs::remove_file(d);
+            }
+        }
+        for (_, n) in &prepared {
+            let _ = std::fs::remove_file(n);
+        }
+        let _ = std::fs::remove_file(state_path(exe));
+        let _ = std::fs::remove_file(sibling(&state_path(exe), ".tmp"));
+        return Err(e);
+    }
+    Ok(())
 }
 
 /// Call at the very start of every run. Counts unconfirmed boots and rolls back after two failures.
@@ -455,6 +470,12 @@ mod tests {
         assert!(apply(&fx.staged, &fx.exe).is_err());
         assert_eq!((read(&fx.exe).as_str(), read(&fx.cli).as_str()), ("app v1", "cli v1"), "the app swap was undone");
         assert!(!sibling(&fx.exe, ".new").exists() && !sibling(&fx.cli, ".new").exists());
+        // A state-write failure: make the state file's `.tmp` slot a directory so write_state fails.
+        let fx2 = fixture();
+        std::fs::create_dir_all(sibling(&state_path(&fx2.exe), ".tmp")).unwrap();
+        assert!(apply(&fx2.staged, &fx2.exe).is_err());
+        assert_eq!((read(&fx2.exe).as_str(), read(&fx2.cli).as_str()), ("app v1", "cli v1"), "state-write failure restores binaries");
+        assert!(!sibling(&fx2.exe, ".new").exists() && !sibling(&fx2.cli, ".new").exists());
     }
 
     #[test]
