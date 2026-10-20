@@ -3575,3 +3575,14 @@
 	Appearance Settings…	Pengaturan Tampilan…
 	Add to favorites	Tambahkan ke favorit
 	Remove from favorites	Hapus dari favorit
+
+# Self-update: Help ▸ Check for Updates…, the status line and the restart badge.
+	Check for Updates…	Periksa Pembaruan…
+	Checking for FilmCraft updates…	Memeriksa pembaruan FilmCraft…
+	Downloading and verifying the FilmCraft update…	Mengunduh dan memverifikasi pembaruan FilmCraft…
+	FilmCraft is up to date.	FilmCraft sudah versi terbaru.
+	FilmCraft was checked recently.	FilmCraft baru saja diperiksa.
+	Update check failed: {error}	Pemeriksaan pembaruan gagal: {error}
+	FilmCraft {version} ready	FilmCraft {version} siap
+	Restart to apply	Mulai ulang untuk menerapkan
+	Restart to apply update	Mulai ulang untuk menerapkan pembaruan

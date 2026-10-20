@@ -180,7 +180,7 @@ pub fn targets_source(app: &FilmcraftApp, params: &Value) -> bool {
 pub fn invoke(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut params: Value) -> Result<Value, String> {
     if id == "help.checkForUpdates" {
         app.updates.start_check()?;
-        app.ui.status = "Checking for FilmCraft updates…".into();
+        app.ui.status = tl!("Checking for FilmCraft updates…").into();
         ctx.request_repaint();
         return Ok(Value::Null);
     }

@@ -1834,9 +1834,9 @@ impl FilmcraftApp {
         let mut restart = false;
         ui.scope_builder(egui::UiBuilder::new().max_rect(badge), |ui| {
             ui.horizontal_centered(|ui| {
-                ui.label(egui::RichText::new(format!("FilmCraft {version} ready")).color(t.text_dim).size(11.0));
-                let response = ui.small_button("Restart to apply");
-                self.auto.add("status.update.apply", response.rect, "Restart to apply update");
+                ui.label(egui::RichText::new(tlf!("FilmCraft {version} ready", version)).color(t.text_dim).size(11.0));
+                let response = ui.small_button(tl!("Restart to apply"));
+                self.auto.add("status.update.apply", response.rect, tl!("Restart to apply update"));
                 restart = response.clicked();
             });
         });
@@ -2089,11 +2089,11 @@ impl eframe::App for FilmcraftApp {
         self.poll_native_dialog(ctx);
         if self.updates.poll() {
             self.ui.status = match &self.updates.phase {
-                updates::Phase::Checking => "Checking for FilmCraft updates…".into(),
-                updates::Phase::Staging => "Downloading and verifying the FilmCraft update…".into(),
-                updates::Phase::UpToDate => "FilmCraft is up to date.".into(),
-                updates::Phase::Throttled => "FilmCraft was checked recently.".into(),
-                updates::Phase::Error(error) => format!("Update check failed: {error}"),
+                updates::Phase::Checking => tl!("Checking for FilmCraft updates…").into(),
+                updates::Phase::Staging => tl!("Downloading and verifying the FilmCraft update…").into(),
+                updates::Phase::UpToDate => tl!("FilmCraft is up to date.").into(),
+                updates::Phase::Throttled => tl!("FilmCraft was checked recently.").into(),
+                updates::Phase::Error(error) => tlf!("Update check failed: {error}", error),
                 updates::Phase::Ready { .. } | updates::Phase::Idle => String::new(),
             };
             ctx.request_repaint();

@@ -3596,3 +3596,14 @@
 	Shows the version, community links and credits in a FilmCraft window.	FilmCraft 창에 버전, 커뮤니티 링크, 제작진을 보여 줍니다.
 	Couldn't open your web browser	웹 브라우저를 열 수 없습니다
 	Open this address in your browser yourself:	이 주소를 브라우저에서 직접 여세요:
+
+# Self-update: Help ▸ Check for Updates…, the status line and the restart badge.
+	Check for Updates…	업데이트 확인…
+	Checking for FilmCraft updates…	FilmCraft 업데이트를 확인하는 중…
+	Downloading and verifying the FilmCraft update…	FilmCraft 업데이트를 다운로드하고 확인하는 중…
+	FilmCraft is up to date.	FilmCraft가 최신 버전입니다.
+	FilmCraft was checked recently.	FilmCraft를 최근에 확인했습니다.
+	Update check failed: {error}	업데이트 확인 실패: {error}
+	FilmCraft {version} ready	FilmCraft {version} 준비됨
+	Restart to apply	재시작하여 적용
+	Restart to apply update	재시작하여 업데이트 적용

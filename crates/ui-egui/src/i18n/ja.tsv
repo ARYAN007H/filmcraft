@@ -3609,3 +3609,14 @@
 	Shows the version, community links and credits in a FilmCraft window.	バージョン、コミュニティへのリンク、クレジットを FilmCraft のウィンドウに表示します。
 	Couldn't open your web browser	ウェブブラウザーを開けませんでした
 	Open this address in your browser yourself:	このアドレスをご自身でブラウザーで開いてください：
+
+# Self-update: Help ▸ Check for Updates…, the status line and the restart badge.
+	Check for Updates…	更新を確認…
+	Checking for FilmCraft updates…	FilmCraft の更新を確認しています…
+	Downloading and verifying the FilmCraft update…	FilmCraft の更新をダウンロードして検証しています…
+	FilmCraft is up to date.	FilmCraft は最新の状態です。
+	FilmCraft was checked recently.	FilmCraft は最近確認されました。
+	Update check failed: {error}	更新の確認に失敗しました: {error}
+	FilmCraft {version} ready	FilmCraft {version} の準備ができました
+	Restart to apply	再起動して適用
+	Restart to apply update	再起動して更新を適用

@@ -3585,3 +3585,14 @@
 	Shows the version, community links and credits in a FilmCraft window.	在 FilmCraft 窗口中显示版本、社区链接和致谢。
 	Couldn't open your web browser	无法打开网页浏览器
 	Open this address in your browser yourself:	请自行在浏览器中打开此地址：
+
+# Self-update: Help ▸ Check for Updates…, the status line and the restart badge.
+	Check for Updates…	检查更新…
+	Checking for FilmCraft updates…	正在检查 FilmCraft 更新…
+	Downloading and verifying the FilmCraft update…	正在下载并验证 FilmCraft 更新…
+	FilmCraft is up to date.	FilmCraft 已是最新版本。
+	FilmCraft was checked recently.	最近已检查过 FilmCraft 更新。
+	Update check failed: {error}	检查更新失败：{error}
+	FilmCraft {version} ready	FilmCraft {version} 已就绪
+	Restart to apply	重启以应用
+	Restart to apply update	重启以应用更新

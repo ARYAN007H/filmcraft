@@ -3601,3 +3601,14 @@
 	Shows the version, community links and credits in a FilmCraft window.	Mostra la versione, i link della community e i riconoscimenti in una finestra di FilmCraft.
 	Couldn't open your web browser	Impossibile aprire il browser web
 	Open this address in your browser yourself:	Apri tu questo indirizzo nel browser:
+
+# Self-update: Help ▸ Check for Updates…, the status line and the restart badge.
+	Check for Updates…	Controlla aggiornamenti…
+	Checking for FilmCraft updates…	Controllo degli aggiornamenti di FilmCraft…
+	Downloading and verifying the FilmCraft update…	Download e verifica dell'aggiornamento di FilmCraft…
+	FilmCraft is up to date.	FilmCraft è aggiornato.
+	FilmCraft was checked recently.	FilmCraft è stato controllato di recente.
+	Update check failed: {error}	Controllo degli aggiornamenti non riuscito: {error}
+	FilmCraft {version} ready	FilmCraft {version} è pronto
+	Restart to apply	Riavvia per applicare
+	Restart to apply update	Riavvia per applicare l'aggiornamento
