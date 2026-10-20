@@ -33,11 +33,25 @@ publish a detached signature (e.g. minisign/Ed25519 over `SHA256SUMS.txt`) and s
 binary. The release pipeline lives in `storytold/craft-common-actions`, so that is a change for the
 maintainers; the verification step belongs in `net::fetch_release`.
 
+## How the app uses it
+
+* **Help ▸ Check for Updates…** (`help.checkForUpdates`) is the only thing that touches the network. It always
+  makes a fresh request (an interval of zero), and when a newer release exists it **downloads and stages it
+  straight away** (up to the 800 MB cap) without asking; only the swap waits for the person to press
+  **Restart to apply** in the status bar.
+* `--update-apply --pid <pid> --staged <dir> --target <exe>` is the helper mode that performs the swap after the
+  editor has flushed its recovery journal and exited.
+* `on_boot()` runs before any window or project recovery; `confirm()` runs after two painted frames.
+
 ## Not done yet
 
 * Applying updates on macOS and Windows (they report "download the installer"; the tarball path is Linux).
-* The app wiring: `--update-apply` helper mode, `on_boot()` / `confirm()` at startup, settings, menu item,
-  status-bar badge and engine commands (`help.check_for_updates`, …).
+* An automatic background check and a setting for it. `check()` can already throttle to one request per interval
+  using a state file, but nothing calls it that way yet, so `Availability::Throttled` is not reachable from the
+  app today. Treat the throttle as a building block for that future check.
+* Asking before the download starts (today the menu item stages the release immediately).
+* Replacing anything but `filmcraft` and `filmcraft-cli`: desktop entry, icons and other files in the tarball are
+  not installed by an update, so a release that needs a new data file would need this extended first.
 * Disk-space pre-check (needs `statvfs`, i.e. `unsafe` or a new dependency); a full disk surfaces as an I/O error
   and the staging directory is deleted.
 * Stall timeout per read; the download has an overall 20-minute limit instead.
