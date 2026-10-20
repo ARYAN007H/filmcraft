@@ -2368,7 +2368,7 @@ dependencies = [
 
 [[package]]
 name = "filmcraft-updater"
-version = "0.7.2"
+version = "0.8.0"
 dependencies = [
  "flate2",
  "log",
