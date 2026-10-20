@@ -37,7 +37,7 @@ maintainers; the verification step belongs in `net::fetch_release`.
 
 * **Help ▸ Check for Updates…** (`help.checkForUpdates`) is the only thing that touches the network. It always
   makes a fresh request (an interval of zero), and when a newer release exists it **downloads and stages it
-  straight away** (up to the 800 MB cap) without asking; only the swap waits for the person to press
+  straight away** (up to the 600 MB download cap and 800 MB extracted) without asking; only the swap waits for the person to press
   **Restart to apply** in the status bar.
 * `--update-apply --pid <pid> --staged <dir> --target <exe>` is the helper mode that performs the swap after the
   editor has flushed its recovery journal and exited.

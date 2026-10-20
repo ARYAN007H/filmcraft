@@ -80,12 +80,13 @@ fn tell(text: &str, error: bool) {
 /// exited. It performs no GUI, project or media initialisation.
 fn apply_staged_update(args: UpdateApply) -> filmcraft_updater::Result<()> {
     if !filmcraft_updater::swap::wait_for_exit(args.pid, std::time::Duration::from_secs(10)) {
-        return Err(filmcraft_updater::UpdateError::Unsupported(format!("the previous FilmCraft process ({}) did not exit within 10 seconds", args.pid)));
+        log::warn!("FilmCraft process {} is still running after 10 s; applying anyway", args.pid);
     }
-    let staged = filmcraft_updater::Staged::load(&args.staged)?;
-    filmcraft_updater::swap::apply(&staged, &args.target)?;
+    let applied = filmcraft_updater::Staged::load(&args.staged)
+        .and_then(|staged| filmcraft_updater::swap::apply(&staged, &args.target));
+    // Whatever happened, the user asked for a restart: start the (new or restored) build.
     filmcraft_updater::swap::relaunch(&args.target, &[])?;
-    Ok(())
+    applied
 }
 
 fn main() -> eframe::Result {
@@ -143,6 +144,12 @@ fn main() -> eframe::Result {
         match filmcraft_updater::on_boot(exe) {
             Ok(filmcraft_updater::BootOutcome::RolledBack { failed, restored }) => {
                 log::warn!("Update to {failed} failed to start and was rolled back to {restored}.");
+                // This process is still the failed build: hand over to the restored one.
+                let args: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
+                match filmcraft_updater::swap::relaunch(exe, &args) {
+                    Ok(()) => std::process::exit(0),
+                    Err(e) => log::warn!("could not start the restored build: {e}"),
+                }
             }
             Ok(_) => {}
             Err(e) => log::warn!("could not check update rollback state: {e}"),
