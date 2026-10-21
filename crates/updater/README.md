@@ -39,8 +39,11 @@ maintainers; the verification step belongs in `net::fetch_release`.
   makes a fresh request (an interval of zero), and when a newer release exists it **downloads and stages it
   straight away** (up to the 600 MB download cap and 800 MB extracted) without asking; only the swap waits for the person to press
   **Restart to apply** in the status bar.
-* `--update-apply --pid <pid> --staged <dir> --target <exe>` is the helper mode that performs the swap after the
-  editor has flushed its recovery journal and exited.
+* `--update-apply --pid <pid> --staged <dir> --target <exe> [-- <launch arguments...>]` is the helper mode that
+  performs the swap after the editor has flushed its recovery journal and exited. The editor passes its own
+  command line after `--`, and the helper restarts the (new or restored) build with it, so `--data-dir`,
+  `--empty`, `--control`, project and media paths survive the update. The restart happens even if the swap
+  failed, so the editor never just disappears.
 * `on_boot()` runs before any window or project recovery; `confirm()` runs after two painted frames.
 
 ## Not done yet

@@ -77,14 +77,16 @@ fn tell(text: &str, error: bool) {
 }
 
 /// The deliberately small helper mode used after the editor has flushed its recovery journal and
-/// exited. It performs no GUI, project or media initialisation.
+/// exited. It performs no GUI, project or media initialisation. It restarts the editor with the
+/// arguments it was given after `--` (see `filmcraft_ui_egui::updates::helper_args`).
 fn apply_staged_update(args: UpdateApply) -> filmcraft_updater::Result<()> {
     if !filmcraft_updater::swap::wait_for_exit(args.pid, std::time::Duration::from_secs(10)) {
         log::warn!("FilmCraft process {} is still running after 10 s; applying anyway", args.pid);
     }
     let applied = filmcraft_updater::Staged::load(&args.staged).and_then(|staged| filmcraft_updater::swap::apply(&staged, &args.target));
-    // Whatever happened, the user asked for a restart: start the (new or restored) build.
-    filmcraft_updater::swap::relaunch(&args.target, &[])?;
+    // Whatever happened, the user asked for a restart: start the (new or restored) build, with the
+    // command line the editor was started with (`--data-dir`, `--empty`, project and media paths).
+    filmcraft_updater::swap::relaunch(&args.target, &args.launch_args)?;
     applied
 }
 
@@ -590,6 +592,39 @@ fn project_patterns() -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    /// Restarting after an update must reopen the editor the way it was started. A launch with a
+    /// custom `--data-dir` used to come back on the default folder and miss the journal it had just
+    /// flushed; `--empty` and the project / media paths were dropped as well. The swap itself fails
+    /// here (nothing is staged), and the editor must still come back with the same arguments.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn update_restart_keeps_the_launch_arguments() {
+        use std::os::unix::fs::PermissionsExt;
+        let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("filmcraft-restart-{}-{nanos}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let (target, out) = (dir.join("filmcraft"), dir.join("argv.txt"));
+        // a stand-in for the new build that records the arguments it was started with
+        let script = format!("#!/bin/sh\nprintf '%s\\n' \"$@\" > '{0}.tmp' && mv '{0}.tmp' '{0}'\n", out.display());
+        std::fs::write(&target, script).unwrap();
+        std::fs::set_permissions(&target, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let launch: Vec<std::ffi::OsString> = ["--data-dir", "/custom/path", "--empty", "cut.fcproj"].map(Into::into).to_vec();
+        // exactly what the editor hands its helper, parsed exactly as the helper parses it
+        let line = filmcraft_ui_egui::updates::helper_args(u32::MAX, &dir.join("no-staged-update"), &target, &launch);
+        let Ok(super::Cli::UpdateApply(apply)) = super::args::parse(None, line) else { panic!("the helper line should parse") };
+        assert_eq!(apply.launch_args, launch);
+        assert!(super::apply_staged_update(apply).is_err(), "there is nothing staged to apply");
+
+        let started = std::time::Instant::now();
+        while !out.exists() && started.elapsed() < std::time::Duration::from_secs(10) {
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        let argv = std::fs::read_to_string(&out).unwrap_or_default();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(argv, "--data-dir\n/custom/path\n--empty\ncut.fcproj\n", "the restarted build got the original command line");
+    }
+
     /// Start-up registers the hardware decoders whether or not anything is logged (no logger is
     /// installed here, as in a normal run).
     #[test]

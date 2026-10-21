@@ -191,23 +191,54 @@ impl UpdateState {
             return Err("there is no staged update to apply".into());
         };
         let updater = self.updater.as_ref().ok_or("automatic updates are not configured for this application")?;
+        // The restart must reopen the editor as it was started (`--data-dir`, `--empty`, project and
+        // media paths), so the helper gets this process's own command line to hand back.
+        let launch: Vec<std::ffi::OsString> = std::env::args_os().skip(1).collect();
         std::process::Command::new(&updater.exe)
-            .arg("--update-apply")
-            .arg("--pid")
-            .arg(std::process::id().to_string())
-            .arg("--staged")
-            .arg(staged)
-            .arg("--target")
-            .arg(&updater.exe)
+            .args(helper_args(std::process::id(), staged, &updater.exe, &launch))
             .spawn()
             .map(|_| ())
             .map_err(|e| format!("could not start the update helper: {e}"))
     }
 }
 
+/// The apply helper's command line: the updater flags, then, after `--`, the arguments the editor
+/// itself was started with. The helper passes that tail to the restarted build untouched (the
+/// parser is `args::parse_update_apply` in `apps/filmcraft`; its test builds a line with this
+/// function so the two cannot drift apart). With no launch arguments there is no `--`.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn helper_args(pid: u32, staged: &std::path::Path, target: &std::path::Path, launch: &[std::ffi::OsString]) -> Vec<std::ffi::OsString> {
+    let mut line: Vec<std::ffi::OsString> =
+        vec!["--update-apply".into(), "--pid".into(), pid.to_string().into(), "--staged".into(), staged.into(), "--target".into(), target.into()];
+    if !launch.is_empty() {
+        line.push("--".into());
+        line.extend(launch.iter().cloned());
+    }
+    line
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
+
+    fn os(args: &[&str]) -> Vec<std::ffi::OsString> {
+        args.iter().map(std::ffi::OsString::from).collect()
+    }
+
+    #[test]
+    fn helper_line_carries_the_launch_arguments_after_a_separator() {
+        let launch = os(&["--data-dir", "/custom/path", "--empty", "--", "--odd.mov"]);
+        let line = helper_args(42, std::path::Path::new("/s"), std::path::Path::new("/opt/filmcraft/bin/filmcraft"), &launch);
+        let flags = os(&["--update-apply", "--pid", "42", "--staged", "/s", "--target", "/opt/filmcraft/bin/filmcraft", "--"]);
+        assert_eq!(line[..flags.len()], flags[..]);
+        assert_eq!(line[flags.len()..], launch[..], "the launch arguments follow unchanged, even a later `--`");
+    }
+
+    #[test]
+    fn helper_line_without_launch_arguments_has_no_separator() {
+        let line = helper_args(7, std::path::Path::new("/s"), std::path::Path::new("/t"), &[]);
+        assert_eq!(line, os(&["--update-apply", "--pid", "7", "--staged", "/s", "--target", "/t"]));
+    }
 
     #[test]
     fn ready_result_survives_worker_disconnect() {

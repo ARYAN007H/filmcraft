@@ -25,7 +25,7 @@ Options:
   -h, --help         print this help and exit
 
 Internal updater helper (started by FilmCraft only):
-  --update-apply --pid <pid> --staged <dir> --target <path>
+  --update-apply --pid <pid> --staged <dir> --target <path> [-- <launch arguments...>]
 ";
 
 /// What the command line asks for.
@@ -44,6 +44,10 @@ pub struct UpdateApply {
     pub pid: u32,
     pub staged: PathBuf,
     pub target: PathBuf,
+    /// The command line the editor itself was started with, verbatim (everything after `--`). The
+    /// restart hands it back to the new build, so `--data-dir`, `--empty`, `--control`, project and
+    /// media paths survive the update. It is never interpreted here.
+    pub launch_args: Vec<OsString>,
 }
 
 /// Options of a normal start.
@@ -150,15 +154,20 @@ fn update_apply_requested(args: &[OsString]) -> bool {
 }
 
 /// Parse the updater's intentionally narrow helper protocol. It refuses extra arguments so a
-/// malformed command can never accidentally fall through to normal GUI startup.
+/// malformed command can never accidentally fall through to normal GUI startup. The one open part
+/// is the optional `-- <launch arguments...>` tail, which is carried through untouched.
 fn parse_update_apply(args: Vec<OsString>) -> Result<Cli, String> {
     let mut update_apply = false;
     let mut pid = None;
     let mut staged = None;
     let mut target = None;
+    let mut launch_args = Vec::new();
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         match arg.to_string_lossy().as_ref() {
+            // Everything after `--` is the editor's own command line, kept exactly as given (it may
+            // hold `--update-apply` or a non-Unicode file name) and handed to the restarted build.
+            "--" => launch_args = args.by_ref().collect(),
             "--update-apply" if !update_apply => update_apply = true,
             "--update-apply" => return Err("--update-apply was passed more than once".into()),
             "--pid" => {
@@ -203,6 +212,7 @@ fn parse_update_apply(args: Vec<OsString>) -> Result<Cli, String> {
         pid: pid.ok_or("--update-apply needs --pid")?,
         staged: staged.ok_or("--update-apply needs --staged")?,
         target: target.ok_or("--update-apply needs --target")?,
+        launch_args,
     }))
 }
 
@@ -277,7 +287,12 @@ mod tests {
         let parsed = parse_args(&["--update-apply", "--pid", "42", "--staged", "/tmp/staged", "--target", "/opt/filmcraft/bin/filmcraft"]);
         assert_eq!(
             parsed,
-            Ok(Cli::UpdateApply(UpdateApply { pid: 42, staged: PathBuf::from("/tmp/staged"), target: PathBuf::from("/opt/filmcraft/bin/filmcraft") }))
+            Ok(Cli::UpdateApply(UpdateApply {
+                pid: 42,
+                staged: PathBuf::from("/tmp/staged"),
+                target: PathBuf::from("/opt/filmcraft/bin/filmcraft"),
+                launch_args: Vec::new(),
+            }))
         );
         for args in [
             vec!["--update-apply"],
@@ -286,6 +301,62 @@ mod tests {
         ] {
             assert!(parse_args(&args).is_err(), "{args:?}");
         }
+    }
+
+    fn helper_line(launch: &[&str]) -> Vec<String> {
+        let mut line: Vec<String> =
+            ["--update-apply", "--pid", "42", "--staged", "/tmp/staged", "--target", "/opt/filmcraft/bin/filmcraft", "--"].map(String::from).to_vec();
+        line.extend(launch.iter().map(|a| a.to_string()));
+        line
+    }
+
+    fn helper(line: &[String]) -> UpdateApply {
+        let line: Vec<&str> = line.iter().map(String::as_str).collect();
+        match parse_args(&line) {
+            Ok(Cli::UpdateApply(apply)) => apply,
+            other => panic!("{line:?} should be the updater helper, got {other:?}"),
+        }
+    }
+
+    /// The restart after an update must reopen the editor the way it was started: a custom
+    /// `--data-dir` (its recovery journal was just flushed there), `--empty`, project and media paths.
+    #[test]
+    fn update_apply_hands_the_launch_arguments_to_the_restart() {
+        let launch = ["--data-dir", "/custom/path", "--empty", "--control", "7777", "cut.fcproj", "clip.mov"];
+        let apply = helper(&helper_line(&launch));
+        assert_eq!(apply.launch_args, launch.iter().map(OsString::from).collect::<Vec<_>>());
+
+        // The restarted editor parses them again and gets the same launch.
+        let Ok(Cli::Run(l)) = parse(None, apply.launch_args) else { panic!("the launch arguments should start the app") };
+        assert_eq!(l.data_dir, Some(PathBuf::from("/custom/path")));
+        assert_eq!((l.demo, l.startup_flag), (false, true), "--empty");
+        assert_eq!(l.control_port, Some(7777));
+        assert_eq!(l.files, vec!["cut.fcproj".to_string(), "clip.mov".to_string()]);
+    }
+
+    /// Nothing after `--` is read as a helper option: a media file may even be called `--update-apply`.
+    #[test]
+    fn update_apply_launch_arguments_are_not_interpreted() {
+        let launch = ["--", "--update-apply", "--pid", "1", "--bogus"];
+        let apply = helper(&helper_line(&launch));
+        assert_eq!(apply.pid, 42);
+        assert_eq!(apply.launch_args, launch.iter().map(OsString::from).collect::<Vec<_>>());
+        // and without a tail the helper still restarts with no arguments
+        assert!(helper(&helper_line(&[])).launch_args.is_empty());
+    }
+
+    /// A Linux file name need not be Unicode; the restart must pass it on byte for byte.
+    #[cfg(unix)]
+    #[test]
+    fn update_apply_keeps_a_non_unicode_launch_argument_exactly() {
+        use std::os::unix::ffi::OsStringExt;
+        let latin1 = OsString::from_vec(b"caf\xe9.mov".to_vec());
+        let mut line: Vec<OsString> = ["--update-apply", "--pid", "42", "--staged", "/s", "--target", "/t", "--", "--data-dir"].map(OsString::from).to_vec();
+        line.push(OsString::from_vec(b"/data/\xe9t\xe9".to_vec()));
+        line.push(latin1.clone());
+        let Ok(Cli::UpdateApply(apply)) = parse(None, line) else { panic!("should be the updater helper") };
+        assert_eq!(apply.launch_args[2], latin1);
+        assert_eq!(apply.launch_args[1], OsString::from_vec(b"/data/\xe9t\xe9".to_vec()));
     }
 
     #[test]
