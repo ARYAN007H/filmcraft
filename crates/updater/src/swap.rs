@@ -268,11 +268,13 @@ pub fn on_boot(exe: &Path) -> Result<BootOutcome> {
         return Ok(BootOutcome::Normal);
     }
     if state.boots >= MAX_UNCONFIRMED_BOOTS {
+        // The state stays until the rollback succeeds: a failed one (a locked file, a full disk)
+        // must be retried on the next start, or the machine is left on the broken build with its
+        // backups still in place. A rollback that fails part-way converges: each start re-restores
+        // the files whose `.prev` is left.
+        rollback(&state, exe)?;
         let outcome = BootOutcome::RolledBack { failed: state.to.clone(), restored: state.from.clone() };
-        let result = rollback(&state, exe);
-        // Whatever happened, stop retrying: a state we cannot act on must not loop forever.
         let _ = std::fs::remove_file(state_path(exe));
-        result?;
         return Ok(outcome);
     }
     state.boots += 1;
@@ -333,8 +335,8 @@ pub fn cleanup_old_backups(exe: &Path) {
     let _ = std::fs::remove_file(state_path(exe));
 }
 
-/// Wait until process `pid` has exited, up to `timeout`. Returns whether it has. On Linux replacing a
-/// binary that is still running is harmless (the old inode stays alive), so callers continue anyway.
+/// Wait until process `pid` has exited, up to `timeout`. Returns whether it has. The apply helper
+/// must refuse to go on when this returns `false`: the editor may still be writing its project.
 pub fn wait_for_exit(pid: u32, timeout: Duration) -> bool {
     let proc_dir = PathBuf::from(format!("/proc/{pid}"));
     if !Path::new("/proc/self").exists() {
@@ -520,6 +522,25 @@ mod tests {
         let d = fx.dir.path().join("stage");
         fx.staged.save(&d).unwrap();
         assert_eq!(Staged::load(&d).unwrap(), fx.staged);
+    }
+
+    #[test]
+    fn a_failed_rollback_is_retried_on_the_next_boot() {
+        let fx = fixture();
+        apply(&fx.staged, &fx.exe).unwrap();
+        let mut s = read_state(&fx.exe).unwrap();
+        s.boots = MAX_UNCONFIRMED_BOOTS;
+        write_state(&fx.exe, &s).unwrap();
+        // The rollback cannot move the app aside: its `.broken` slot is a directory, so the rename
+        // into it fails.
+        std::fs::create_dir_all(sibling(&fx.exe, ".broken").join("x")).unwrap();
+        assert!(on_boot(&fx.exe).is_err());
+        assert!(state_path(&fx.exe).exists(), "the state survives a failed rollback so the next start retries");
+        // Once the obstacle is gone, the next start completes the rollback.
+        std::fs::remove_dir_all(sibling(&fx.exe, ".broken")).unwrap();
+        assert_eq!(on_boot(&fx.exe).unwrap(), BootOutcome::RolledBack { failed: "0.7.3".into(), restored: "0.7.2".into() });
+        assert_eq!(read(&fx.exe), "app v1");
+        assert!(!state_path(&fx.exe).exists());
     }
 
     #[test]

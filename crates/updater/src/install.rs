@@ -86,7 +86,8 @@ pub fn dir_is_writable(dir: &Path) -> bool {
 }
 
 /// An exclusive lock directory entry so two FilmCraft windows never download or swap at once.
-/// Dropping it releases the lock; a lock older than an hour is considered abandoned.
+/// Dropping it releases the lock; a lock older than an hour, or whose holder process is gone, is
+/// considered abandoned.
 #[derive(Debug)]
 pub struct UpdateLock {
     path: PathBuf,
@@ -107,9 +108,17 @@ impl UpdateLock {
                     return Ok(UpdateLock { path });
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                    let stale =
+                    let too_old =
                         std::fs::metadata(&path).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age > Self::STALE_AFTER);
-                    if stale {
+                    // The holder wrote its PID: one that exited (or crashed) without dropping the
+                    // lock must not block updates for an hour. `/proc` exists only on Linux;
+                    // elsewhere the age above is the only signal.
+                    let holder_gone = Path::new("/proc/self").exists()
+                        && std::fs::read_to_string(&path)
+                            .ok()
+                            .and_then(|s| s.trim().parse::<u32>().ok())
+                            .is_some_and(|pid| pid != std::process::id() && !Path::new(&format!("/proc/{pid}")).exists());
+                    if too_old || holder_gone {
                         let _ = std::fs::remove_file(&path);
                         continue;
                     }
@@ -167,5 +176,21 @@ mod tests {
         assert!(matches!(UpdateLock::acquire(dir.path()), Err(crate::UpdateError::Locked)));
         drop(a);
         assert!(UpdateLock::acquire(dir.path()).is_ok());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn lock_of_a_dead_holder_is_taken_as_stale() {
+        // A holder that exited without dropping the lock (a crash, a killed worker) must not block
+        // updates for an hour. A reaped child is guaranteed to have no /proc entry any more.
+        let mut child = std::process::Command::new("true").spawn().unwrap();
+        let dead = child.id();
+        child.wait().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join(".lock"), format!("{}\n", dead)).unwrap();
+        assert!(UpdateLock::acquire(dir.path()).is_ok(), "the dead holder's lock is taken over");
+        // A lock naming a live holder (this process) still excludes a second one.
+        std::fs::write(dir.path().join(".lock"), format!("{}\n", std::process::id())).unwrap();
+        assert!(matches!(UpdateLock::acquire(dir.path()), Err(crate::UpdateError::Locked)));
     }
 }

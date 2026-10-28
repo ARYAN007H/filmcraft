@@ -85,6 +85,12 @@ impl FilmcraftApp {
                 ui.ctx().request_repaint_after(std::time::Duration::from_secs(1));
             }
         }
+        // A staging download outlives the status bar's few seconds: keep its hint drawn. Logic sets
+        // it once; this restores it after the timeout above clears it. Only while staging (a long
+        // download) — a check's transient statuses come and go as before.
+        if self.ui.status.is_empty() && matches!(&self.updates.phase, crate::updates::Phase::Staging) {
+            self.ui.status = tl!("Downloading and verifying the FilmCraft update…").into();
+        }
         let hint = if !self.ui.status.is_empty() { self.ui.status.clone() } else { self.hint_text() };
         ui.painter().text(egui::pos2(sb.min.x + 10.0, sb.center().y), egui::Align2::LEFT_CENTER, hint, Tokens::ui(11.0), t.text_dim);
         let resp = ui.interact(sb, egui::Id::unique("status-bar"), egui::Sense::click());

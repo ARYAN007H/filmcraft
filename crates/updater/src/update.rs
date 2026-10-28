@@ -119,8 +119,19 @@ impl Updater {
             return Err(UpdateError::Unsupported(format!("{} is not newer than the installed {}", release.version, self.current)));
         }
         let _lock = UpdateLock::acquire(&self.cache_dir)?;
+        // Earlier stagings (already applied, superseded or abandoned) are never needed again, and
+        // nothing else deletes them: sweep them under the lock so each update cannot leave another
+        // release tree on disk. A pending "Restart to apply" whose directory went away fails to
+        // load its manifest and relaunches the current build.
+        if let Ok(entries) = std::fs::read_dir(&self.cache_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() && entry.file_name().to_string_lossy().starts_with("filmcraft-") {
+                    let _ = std::fs::remove_dir_all(&path);
+                }
+            }
+        }
         let work = self.cache_dir.join(format!("filmcraft-{}", release.version));
-        let _ = std::fs::remove_dir_all(&work);
         std::fs::create_dir_all(&work)?;
         let result = self.stage_into(release, &work, progress);
         if result.is_err() {

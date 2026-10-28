@@ -82,7 +82,10 @@ fn tell(text: &str, error: bool) {
 /// arguments it was given after `--` (see `filmcraft_ui_egui::updates::helper_args`).
 fn apply_staged_update(args: UpdateApply) -> filmcraft_updater::Result<()> {
     if !filmcraft_updater::swap::wait_for_exit(args.pid, std::time::Duration::from_secs(10)) {
-        log::warn!("FilmCraft process {} is still running after 10 s; applying anyway", args.pid);
+        // The editor's autosave worker lives as long as the editor does: never swap binaries
+        // underneath a process that has not exited. Nothing was touched; the staged update can be
+        // applied from the next "Restart to apply".
+        return Err(filmcraft_updater::UpdateError::Unsupported(format!("FilmCraft process {} is still running; the staged update was not applied", args.pid)));
     }
     let applied = filmcraft_updater::Staged::load(&args.staged).and_then(|staged| filmcraft_updater::swap::apply(&staged, &args.target));
     // Whatever happened, the user asked for a restart: start the (new or restored) build, with the

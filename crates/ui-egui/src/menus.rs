@@ -147,7 +147,6 @@ pub const UI_COMMANDS: &[UiCommand] = &[
     uic!("help.reportIssue", "Report an Issue…", ["Help"], None),
     uic!("help.revealLogFiles", "Reveal Log Files…", ["Help"], None),
     uic!("help.systemCompatibilityReport", "System Compatibility Report…", ["Help"], None),
-    uic!("app.checkForUpdates", "Check for Updates…", ["Help"], None),
     uic!("app.about", "About FilmCraft", ["Help"], None),
     uic!("app.keyboardShortcuts", "Keyboard Shortcuts…", ["Edit"], Some("Cmd+Alt+K")),
     uic!("app.settings.general", "General…", ["Edit", "Preferences"], Some("Cmd+,")),
@@ -184,7 +183,10 @@ pub fn targets_source(app: &FilmcraftApp, params: &Value) -> bool {
 /// Execute a UI or engine command by id.
 pub fn invoke(app: &mut FilmcraftApp, ctx: &egui::Context, id: &str, mut params: Value) -> Result<Value, String> {
     if id == "help.checkForUpdates" {
-        app.updates.start_check()?;
+        if let Err(e) = app.updates.start_check() {
+            app.ui.status = e.clone();
+            return Err(e);
+        }
         app.ui.status = tl!("Checking for FilmCraft updates…").into();
         ctx.request_repaint();
         return Ok(Value::Null);
