@@ -437,6 +437,21 @@ impl Pool {
         released
     }
 
+    /// Empty every cache whose lock is free (see [`release_idle`]). Decoders are dropped with no
+    /// cache lock held, as for [`Self::trim_decoders`].
+    fn release_idle(&self) {
+        let all: Vec<Arc<Shared>> = self.caches.lock().unwrap_or_else(PoisonError::into_inner).iter().filter_map(Weak::upgrade).collect();
+        let mut released = Vec::new();
+        for c in &all {
+            // try-locked: a cache another thread holds is decoding, so it is in use
+            if let Some(mut st) = try_state(c) {
+                st.release_frames(self, || true);
+                released.extend(st.release_decoder(self));
+            }
+        }
+        drop(released);
+    }
+
     /// Evict the frames of caches idle for [`RECENT`], least recently used first, down to the
     /// budget. Caches in use keep theirs (each within its own budget): a frame evicted before it is shown costs a
     /// re-decode from the keyframe.
@@ -454,6 +469,17 @@ impl Pool {
             }
         }
     }
+}
+
+/// Free the decoded frames and the decoders of every cache that nobody is using right now,
+/// process-wide. The frame budget only trims caches that were idle for [`RECENT`] while another
+/// cache is asking for frames, so after a long job (an export) every source keeps up to
+/// [`FRAME_CACHE_CEILING`] of frames and its decoders until the session ends. Whoever finishes
+/// such a job calls this. A cache a thread is decoding on (its lock is held) is skipped, so
+/// concurrent users lose nothing; a cache emptied here only re-decodes from a sync sample when
+/// asked again.
+pub fn release_idle() {
+    Pool::global().release_idle();
 }
 
 /// Caches that hold a decoder right now, process-wide (`perf.stats`).
