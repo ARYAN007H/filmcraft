@@ -1192,3 +1192,15 @@ fn applied_transform_centres_its_points_in_the_clip_picture() {
         assert_eq!(m.param("position").unwrap().value.as_vec2().unwrap(), frame_centre);
     }
 }
+
+#[test]
+fn set_param_rejects_colour_component_that_overflows_f32() {
+    // 1e300 is a finite JSON number but saturates to an infinite f32, which saved as `null` and could not be reopened
+    let mut s = demo();
+    let a = v1(&s)[0].clone();
+    s.execute("effects.apply", json!({"clips": [a.id.0], "effect": "tint"})).unwrap();
+    let r = s.execute("effects.setParam", json!({"clip": a.id.0, "effect": "tint", "param": "black", "value": [1e300, 0, 0, 1]}));
+    assert!(r.is_err(), "an overflowing colour component must be refused");
+    let bytes = filmcraft_format::encode(&s.project, false);
+    filmcraft_format::decode(&bytes).unwrap();
+}
