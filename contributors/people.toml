@@ -97,3 +97,6 @@ sync_github_name = true
 [people.thecyberbutler]
 display_name = "@thecyberbutler"
 sync_github_name = false
+
+[people.alexanderalber]
+real_name = "Alexander Alber"
