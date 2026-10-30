@@ -171,10 +171,9 @@ pub(crate) enum ImeComposition {
 /// `control_server::DisabledWhy` onto this.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ControlNotice {
-    /// `FILMCRAFT_CONTROL_TOKEN` is missing or malformed.
+    /// `FILMCRAFT_CONTROL_TOKEN` is missing or malformed. (A bind failure is only logged until
+    /// #3318 reworks port-collision reporting.)
     Token,
-    /// The port could not be bound (`reason` is the OS error text, shown as logged).
-    Bind { reason: String },
 }
 
 pub struct FilmcraftApp {

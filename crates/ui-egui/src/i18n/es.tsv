@@ -3633,4 +3633,3 @@
 	The control server is disabled: FILMCRAFT_CONTROL_TOKEN must contain 64 random hex characters (see docs/control-protocol.md)	El servidor de control está desactivado: FILMCRAFT_CONTROL_TOKEN debe contener 64 caracteres hexadecimales aleatorios (ver docs/control-protocol.md)
 
 # Control server: the bind-failure notice (port collisions; #3318 may show it too).
-	Control server disabled: {reason}	Servidor de control desactivado: {reason}

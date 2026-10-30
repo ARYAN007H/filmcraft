@@ -3609,4 +3609,3 @@
 	The control server is disabled: FILMCRAFT_CONTROL_TOKEN must contain 64 random hex characters (see docs/control-protocol.md)	제어 서버가 비활성화되었습니다: FILMCRAFT_CONTROL_TOKEN에는 64자리 무작위 16진수 문자가 필요합니다(docs/control-protocol.md 참조)
 
 # Control server: the bind-failure notice (port collisions; #3318 may show it too).
-	Control server disabled: {reason}	제어 서버가 비활성화됨: {reason}

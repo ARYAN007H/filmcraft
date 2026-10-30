@@ -98,7 +98,6 @@ impl FilmcraftApp {
                         tl!("The control server is disabled: FILMCRAFT_CONTROL_TOKEN must contain 64 random hex characters (see docs/control-protocol.md)")
                             .into()
                 }
-                crate::ControlNotice::Bind { reason } => self.ui.status = tlf!("Control server disabled: {reason}", reason),
             }
         }
         let hint = if !self.ui.status.is_empty() { self.ui.status.clone() } else { self.hint_text() };
